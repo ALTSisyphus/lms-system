@@ -1,7 +1,10 @@
+from django.conf import settings
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 from django.utils import timezone
+
+from materials.models import Course, Lesson
 
 
 class UserManager(BaseUserManager):
@@ -95,3 +98,78 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+
+class Payment(models.Model):
+    CASH = "cash"
+    TRANSFER = "transfer"
+
+    PAYMENT_METHOD_CHOICES = (
+        (CASH, "Наличные"),
+        (TRANSFER, "Перевод на счет"),
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="payments",
+        verbose_name="пользователь",
+    )
+
+    payment_date = models.DateTimeField(
+        default=timezone.now,
+        verbose_name="дата оплаты",
+    )
+
+    paid_course = models.ForeignKey(
+        Course,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payments",
+        verbose_name="оплаченный курс",
+    )
+
+    paid_lesson = models.ForeignKey(
+        Lesson,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payments",
+        verbose_name="оплаченный урок",
+    )
+
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name="сумма оплаты",
+    )
+
+    payment_method = models.CharField(
+        max_length=8,
+        choices=PAYMENT_METHOD_CHOICES,
+        verbose_name="способ оплаты",
+    )
+
+    class Meta:
+        ordering = ("-payment_date",)
+        verbose_name = "платеж"
+        verbose_name_plural = "платежи"
+        constraints = (
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        paid_course__isnull=False,
+                        paid_lesson__isnull=True,
+                    )
+                    | models.Q(
+                        paid_course__isnull=True,
+                        paid_lesson__isnull=False,
+                    )
+                ),
+                name="payment_exactly_one_item",
+            ),
+        )
+
+    def __str__(self):
+        return f"{self.user} — {self.amount}"
