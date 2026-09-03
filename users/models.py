@@ -155,6 +155,21 @@ class Payment(models.Model):
         ordering = ("-payment_date",)
         verbose_name = "платеж"
         verbose_name_plural = "платежи"
+        constraints = (
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        paid_course__isnull=False,
+                        paid_lesson__isnull=True,
+                    )
+                    | models.Q(
+                        paid_course__isnull=True,
+                        paid_lesson__isnull=False,
+                    )
+                ),
+                name="payment_exactly_one_item",
+            ),
+        )
 
     def __str__(self):
         return f"{self.user} — {self.amount}"
