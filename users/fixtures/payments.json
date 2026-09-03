@@ -1,0 +1,66 @@
+[
+    {
+        "model": "users.user",
+        "pk": 900001,
+        "fields": {
+            "password": "!",
+            "last_login": null,
+            "is_superuser": false,
+            "email": "fixture.student@example.com",
+            "first_name": "Fixture",
+            "last_name": "Student",
+            "phone": "",
+            "city": "",
+            "avatar": "",
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2026-09-03T09:00:00Z",
+            "groups": [],
+            "user_permissions": []
+        }
+    },
+    {
+        "model": "materials.course",
+        "pk": 900001,
+        "fields": {
+            "title": "Python-разработка",
+            "preview": "",
+            "description": "Тестовый курс для фикстуры платежей."
+        }
+    },
+    {
+        "model": "materials.lesson",
+        "pk": 900001,
+        "fields": {
+            "course": 900001,
+            "title": "Django REST Framework",
+            "description": "Тестовый урок для фикстуры платежей.",
+            "preview": "",
+            "video_url": ""
+        }
+    },
+    {
+        "model": "users.payment",
+        "pk": 900001,
+        "fields": {
+            "user": 900001,
+            "payment_date": "2026-09-01T10:00:00Z",
+            "paid_course": 900001,
+            "paid_lesson": null,
+            "amount": "15000.00",
+            "payment_method": "transfer"
+        }
+    },
+    {
+        "model": "users.payment",
+        "pk": 900002,
+        "fields": {
+            "user": 900001,
+            "payment_date": "2026-09-02T10:00:00Z",
+            "paid_course": null,
+            "paid_lesson": 900001,
+            "amount": "2500.00",
+            "payment_method": "cash"
+        }
+    }
+]
