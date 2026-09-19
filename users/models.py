@@ -123,7 +123,7 @@ class Payment(models.Model):
 
     paid_course = models.ForeignKey(
         Course,
-        on_delete=models.SET_NULL,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name="payments",
@@ -132,7 +132,7 @@ class Payment(models.Model):
 
     paid_lesson = models.ForeignKey(
         Lesson,
-        on_delete=models.SET_NULL,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name="payments",
