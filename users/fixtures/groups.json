@@ -1,0 +1,6 @@
+[
+    {
+        "model": "auth.group",
+        "fields": {"name": "Модераторы", "permissions": []}
+    }
+]
