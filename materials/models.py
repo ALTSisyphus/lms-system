@@ -1,7 +1,17 @@
+from django.conf import settings
 from django.db import models
 
 
 class Course(models.Model):
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="courses",
+        null=True,
+        blank=True,
+        verbose_name="владелец",
+    )
+
     title = models.CharField(
         max_length=255,
         verbose_name="название",
@@ -24,6 +34,15 @@ class Course(models.Model):
 
 
 class Lesson(models.Model):
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="lessons",
+        null=True,
+        blank=True,
+        verbose_name="владелец",
+    )
+
     course = models.ForeignKey(
         Course,
         on_delete=models.CASCADE,
