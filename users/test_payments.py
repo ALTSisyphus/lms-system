@@ -46,6 +46,8 @@ class PaymentAPITestCase(APITestCase):
             payment_method=Payment.CASH,
         )
 
+        self.client.force_authenticate(user=self.user)
+
     def test_payment_list(self):
         response = self.client.get(
             reverse("payment-list"),
