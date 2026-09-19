@@ -14,6 +14,8 @@ class UserProfileAPITestCase(APITestCase):
             city="Москва",
         )
 
+        self.client.force_authenticate(user=self.user)
+
     def test_retrieve_user_profile(self):
         response = self.client.get(
             reverse(
