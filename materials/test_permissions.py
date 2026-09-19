@@ -53,7 +53,7 @@ class MaterialPermissionsTests(APITestCase):
             with self.subTest(resource=resource):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, 200)
-                self.assertEqual([row["id"] for row in response.data], [own.pk])
+                self.assertEqual([row["id"] for row in response.data["results"]], [own.pk])
                 detail = f"{url}{own.pk}/"
                 self.assertEqual(self.client.get(detail).status_code, 200)
                 for method in ("put", "patch"):
@@ -88,7 +88,7 @@ class MaterialPermissionsTests(APITestCase):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(
-                    {row["id"] for row in response.data}, {own.pk, other.pk},
+                    {row["id"] for row in response.data["results"]}, {own.pk, other.pk},
                 )
                 for obj in (own, other):
                     detail = f"{url}{obj.pk}/"
