@@ -5,6 +5,7 @@ from materials.views import (
     CourseViewSet,
     LessonListCreateAPIView,
     LessonRetrieveUpdateDestroyAPIView,
+    SubscriptionToggleAPIView,
 )
 
 
@@ -13,6 +14,10 @@ router.register("courses", CourseViewSet, basename="course")
 
 
 urlpatterns = [
+    path(
+        "subscriptions/", SubscriptionToggleAPIView.as_view(),
+        name="subscription-toggle",
+    ),
     path("", include(router.urls)),
     path(
         "lessons/",
