@@ -60,11 +60,6 @@ class UserRetrieveUpdateAPIView(generics.RetrieveUpdateDestroyAPIView):
 class PaymentListAPIView(generics.ListCreateAPIView):
     """История платежей с фильтрацией и создание Stripe Checkout."""
 
-    queryset = Payment.objects.select_related(
-        "user",
-        "paid_course",
-        "paid_lesson",
-    ).all()
     serializer_class = PaymentSerializer
 
     permission_classes = [IsAuthenticated]
@@ -87,6 +82,15 @@ class PaymentListAPIView(generics.ListCreateAPIView):
     ordering = (
         "-payment_date",
     )
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Payment.objects.none()
+        return Payment.objects.select_related(
+            "user",
+            "paid_course",
+            "paid_lesson",
+        ).filter(user=self.request.user)
 
     def create(self, request, *args, **kwargs):
         serializer = PaymentCreateSerializer(data=request.data)

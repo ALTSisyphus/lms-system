@@ -46,7 +46,31 @@ class PaymentAPITestCase(APITestCase):
             payment_method=Payment.CASH,
         )
 
+        self.other_user = User.objects.create_user(email="other@example.com")
+        self.other_course_payment = Payment.objects.create(
+            user=self.other_user,
+            paid_course=self.course,
+            amount="15000.00",
+            payment_method=Payment.TRANSFER,
+        )
+        self.other_lesson_payment = Payment.objects.create(
+            user=self.other_user,
+            paid_lesson=self.lesson,
+            amount="2500.00",
+            payment_method=Payment.CASH,
+        )
+
         self.client.force_authenticate(user=self.user)
+
+    def test_payment_list_only_contains_current_users_payments(self):
+        response = self.client.get(reverse("payment-list"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payment_ids = {payment["id"] for payment in response.data}
+        self.assertIn(self.course_payment.pk, payment_ids)
+        self.assertIn(self.lesson_payment.pk, payment_ids)
+        self.assertNotIn(self.other_course_payment.pk, payment_ids)
+        self.assertNotIn(self.other_lesson_payment.pk, payment_ids)
 
     def test_payment_list(self):
         response = self.client.get(
