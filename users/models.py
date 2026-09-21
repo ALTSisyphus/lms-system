@@ -103,8 +103,10 @@ class User(AbstractBaseUser, PermissionsMixin):
 class Payment(models.Model):
     CASH = "cash"
     TRANSFER = "transfer"
+    STRIPE = "stripe"
 
     PAYMENT_METHOD_CHOICES = (
+        (STRIPE, "Stripe"),
         (CASH, "Наличные"),
         (TRANSFER, "Перевод на счет"),
     )
@@ -150,6 +152,12 @@ class Payment(models.Model):
         choices=PAYMENT_METHOD_CHOICES,
         verbose_name="способ оплаты",
     )
+
+    stripe_product_id = models.CharField(max_length=255, blank=True)
+    stripe_price_id = models.CharField(max_length=255, blank=True)
+    stripe_session_id = models.CharField(max_length=255, blank=True)
+    payment_url = models.URLField(max_length=1000, blank=True)
+    payment_status = models.CharField(max_length=50, default="unpaid")
 
     class Meta:
         ordering = ("-payment_date",)
