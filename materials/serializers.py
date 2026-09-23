@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
 
 from materials.models import Course, Lesson, Subscription
 from materials.permissions import IsModerator
@@ -31,7 +32,7 @@ class CourseSerializer(serializers.ModelSerializer):
     lessons = serializers.SerializerMethodField()
     is_subscribed = serializers.SerializerMethodField()
 
-    def get_is_subscribed(self, obj):
+    def get_is_subscribed(self, obj) -> bool:
         request = self.context.get("request")
         if request is None or not request.user.is_authenticated:
             return False
@@ -53,9 +54,10 @@ class CourseSerializer(serializers.ModelSerializer):
                 if request.user.is_authenticated
                 and lesson.owner_id == request.user.pk]
 
-    def get_lessons_count(self, obj):
+    def get_lessons_count(self, obj) -> int:
         return len(self.visible_lessons(obj))
 
+    @extend_schema_field(LessonSerializer(many=True))
     def get_lessons(self, obj):
         return LessonSerializer(
             self.visible_lessons(obj), many=True, context=self.context

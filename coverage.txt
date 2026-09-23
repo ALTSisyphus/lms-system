@@ -1,8 +1,9 @@
 Name                                                                           Stmts   Miss  Cover   Missing
 ------------------------------------------------------------------------------------------------------------
 config/__init__.py                                                                 0      0   100%
-config/settings.py                                                                22      0   100%
-config/urls.py                                                                     8      1    88%   19
+config/schema.py                                                                  13      0   100%
+config/settings.py                                                                30      0   100%
+config/urls.py                                                                    18      1    94%   46
 manage.py                                                                         11      2    82%   12-13
 materials/__init__.py                                                              0      0   100%
 materials/admin.py                                                                 1      0   100%
@@ -10,17 +11,18 @@ materials/apps.py                                                               
 materials/migrations/0001_initial.py                                               6      0   100%
 materials/migrations/0002_course_owner_lesson_owner.py                             6      0   100%
 materials/migrations/0003_subscription.py                                          6      0   100%
+materials/migrations/0004_course_price.py                                          4      0   100%
 materials/migrations/__init__.py                                                   0      0   100%
-materials/models.py                                                               23      2    91%   33, 77
+materials/models.py                                                               24      2    92%   37, 81
 materials/paginators.py                                                            5      0   100%
 materials/permissions.py                                                           9      0   100%
-materials/serializers.py                                                          41      0   100%
+materials/serializers.py                                                          43      0   100%
 materials/test_permissions.py                                                    113      0   100%
 materials/test_serializers.py                                                     14      0   100%
 materials/tests.py                                                               119      0   100%
 materials/urls.py                                                                  6      0   100%
 materials/validators.py                                                           11      2    82%   11-12
-materials/views.py                                                                67      1    99%   19
+materials/views.py                                                                73      1    99%   22
 users/__init__.py                                                                  0      0   100%
 users/admin.py                                                                    21      0   100%
 users/apps.py                                                                      4      0   100%
@@ -28,15 +30,19 @@ users/migrations/0001_initial.py                                                
 users/migrations/0002_payment.py                                                   7      0   100%
 users/migrations/0003_payment_payment_exactly_one_item.py                          4      0   100%
 users/migrations/0004_alter_payment_paid_course_alter_payment_paid_lesson.py       5      0   100%
+users/migrations/0005_payment_payment_status_payment_payment_url_and_more.py       4      0   100%
 users/migrations/__init__.py                                                       0      0   100%
-users/models.py                                                                   56      5    91%   13, 28, 31, 100, 175
+users/models.py                                                                   62      5    92%   13, 28, 31, 100, 183
 users/permissions.py                                                               4      0   100%
-users/serializers.py                                                              39      0   100%
+users/serializers.py                                                              42      0   100%
+users/services.py                                                                 40      0   100%
+users/test_documentation.py                                                       31      0   100%
 users/test_payment_constraints.py                                                 25      0   100%
 users/test_payments.py                                                            52      0   100%
 users/test_permissions.py                                                         93      0   100%
+users/test_stripe.py                                                             105      0   100%
 users/tests.py                                                                    19      0   100%
 users/urls.py                                                                      3      0   100%
-users/views.py                                                                    26      0   100%
+users/views.py                                                                    61      0   100%
 ------------------------------------------------------------------------------------------------------------
-TOTAL                                                                            836     13    98%
+TOTAL                                                                           1104     13    99%

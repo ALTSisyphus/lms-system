@@ -6,10 +6,10 @@ from users.models import Payment, User
 
 class PaymentSerializer(serializers.ModelSerializer):
     paid_course = CourseSerializer(
-        read_only=True,
+        read_only=True, allow_null=True,
     )
     paid_lesson = LessonSerializer(
-        read_only=True,
+        read_only=True, allow_null=True,
     )
 
     class Meta:
@@ -22,15 +22,32 @@ class PaymentSerializer(serializers.ModelSerializer):
             "paid_lesson",
             "amount",
             "payment_method",
+            "stripe_product_id",
+            "stripe_price_id",
+            "stripe_session_id",
+            "payment_url",
+            "payment_status",
+        )
+
+        read_only_fields = (
+            "stripe_product_id", "stripe_price_id", "stripe_session_id",
+            "payment_url", "payment_status",
         )
 
 
+class PaymentCreateSerializer(serializers.Serializer):
+    course = serializers.IntegerField(min_value=1)
+
+
 class UserSerializer(serializers.ModelSerializer):
+    """Поля last_name и payments присутствуют только в собственном профиле."""
+
     password = serializers.CharField(
         write_only=True, required=False, allow_blank=False,
         trim_whitespace=False,
     )
     payments = PaymentSerializer(
+        required=False,
         many=True,
         read_only=True,
     )

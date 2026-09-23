@@ -1,3 +1,6 @@
+from drf_spectacular.utils import extend_schema, extend_schema_view, inline_serializer, OpenApiExample
+from config.schema import DetailError, ValidationErrorSchema, documented_response
+
 from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, serializers, viewsets
@@ -33,6 +36,14 @@ class OwnedMaterialMixin:
         serializer.save(owner=self.request.user)
 
 
+@extend_schema_view(
+    list=documented_response(CourseSerializer(many=True), missing=True),
+    create=documented_response(CourseSerializer, 201, validation=True, forbidden=True),
+    retrieve=documented_response(CourseSerializer, forbidden=True, missing=True),
+    update=documented_response(CourseSerializer, validation=True, forbidden=True, missing=True),
+    partial_update=documented_response(CourseSerializer, validation=True, forbidden=True, missing=True),
+    destroy=documented_response(None, 204, validation=True, forbidden=True, missing=True),
+)
 class CourseViewSet(OwnedMaterialMixin, viewsets.ModelViewSet):
     queryset = Course.objects.prefetch_related("lessons").order_by("pk")
     serializer_class = CourseSerializer
@@ -59,6 +70,10 @@ class LessonPermissionsMixin(OwnedMaterialMixin):
         return [permission() for permission in classes]
 
 
+@extend_schema_view(
+    get=documented_response(LessonSerializer(many=True), missing=True),
+    post=documented_response(LessonSerializer, 201, validation=True, forbidden=True),
+)
 class LessonListCreateAPIView(
     LessonPermissionsMixin, generics.ListCreateAPIView
 ):
@@ -67,6 +82,12 @@ class LessonListCreateAPIView(
     pagination_class = MaterialPagination
 
 
+@extend_schema_view(
+    get=documented_response(LessonSerializer, forbidden=True, missing=True),
+    put=documented_response(LessonSerializer, validation=True, forbidden=True, missing=True),
+    patch=documented_response(LessonSerializer, validation=True, forbidden=True, missing=True),
+    delete=documented_response(None, 204, validation=True, forbidden=True, missing=True),
+)
 class LessonRetrieveUpdateDestroyAPIView(
     LessonPermissionsMixin, generics.RetrieveUpdateDestroyAPIView
 ):
@@ -77,6 +98,21 @@ class LessonRetrieveUpdateDestroyAPIView(
 class SubscriptionToggleAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=inline_serializer(name="SubscriptionRequest", fields={
+            "course": serializers.IntegerField(min_value=1),
+        }),
+        responses={
+            200: inline_serializer(name="SubscriptionResponse", fields={
+                "message": serializers.CharField(),
+            }),
+            400: ValidationErrorSchema, 401: DetailError, 404: DetailError,
+        },
+        examples=[
+            OpenApiExample("Подписка", value={"message": "Подписка добавлена."}, response_only=True),
+            OpenApiExample("Отписка", value={"message": "Подписка удалена."}, response_only=True),
+        ],
+    )
     def post(self, request):
         if "course" not in request.data:
             raise ValidationError({"course": "Укажите ID курса."})
