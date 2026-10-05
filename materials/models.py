@@ -1,8 +1,13 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Course(models.Model):
+    updated_at = models.DateTimeField(
+        default=timezone.now, editable=False, verbose_name="обновлён",
+    )
+
     price = models.DecimalField(
         max_digits=10, decimal_places=2, default=0, verbose_name="цена",
     )

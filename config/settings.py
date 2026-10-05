@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 
+from celery.schedules import crontab
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -161,3 +162,19 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_CURRENCY = os.getenv("STRIPE_CURRENCY", "rub")
 STRIPE_SUCCESS_URL = os.getenv("STRIPE_SUCCESS_URL", "http://localhost:8000/api/docs/")
 STRIPE_CANCEL_URL = os.getenv("STRIPE_CANCEL_URL", "http://localhost:8000/api/docs/")
+
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = USE_TZ
+CELERY_BEAT_SCHEDULE = {
+    "deactivate-inactive-users-daily": {
+        "task": "users.tasks.deactivate_inactive_users",
+        "schedule": crontab(hour=3, minute=0),
+    },
+}
+
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend",
+)
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@example.com")
