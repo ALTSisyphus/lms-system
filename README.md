@@ -174,9 +174,3 @@ Celery Beat периодически проверяет поле `last_login` п
 - PostgreSQL — база данных в Docker;
 - Docker и Docker Compose;
 - SQLite — база данных для локальной разработки.
-
-## Домашнее задание 35.2: CI/CD и деплой
-
-Production-инфраструктура: **GitHub Actions → Docker GHCR → Ubuntu / Docker Compose → Nginx → Gunicorn**, PostgreSQL, Redis и Celery. CI на каждом push и PR выполняет Django tests, Ruff lint и Docker build. Деплой после успешной проверки выполняется только для `develop`.
-
-Полная инструкция (SSH, firewall, GitHub Secrets, переменные окружения, первый деплой, проверка и откат): **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**. Шаблон секретов: [`.env.template`](.env.template). Для локального запуска с `docker-compose.yml` создайте `.env` из `.env.example` и заполните нужные значения; порт разработки привязан к `127.0.0.1:8000`.
