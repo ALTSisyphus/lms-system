@@ -1,22 +1,35 @@
-# Python
+# Python and test artifacts
 __pycache__/
 *.py[cod]
-
-# Virtual environment
-.venv/
-
-# Django
-db.sqlite3
-*.log
-
-# Environment variables
-.env
-
-# VSCode
-.vscode/
-
-# PyCharm
-.idea/
-
-# Coverage runtime data (the text report is tracked)
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
 .coverage
+coverage.txt
+htmlcov/
+
+# Environments / local secrets
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+!.env.template
+.image.env
+
+# Django/runtime
+*.sqlite3
+*.sqlite3-*
+*.log
+media/
+staticfiles/
+celerybeat-schedule*
+
+# IDE/OS
+.vscode/
+.idea/
+.DS_Store
+
+# Local homework patch
+35.2-ci-cd.patch
