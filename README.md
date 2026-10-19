@@ -1,8 +1,17 @@
 # LMS System
 
-**LMS System** — backend-приложение для платформы онлайн-обучения, разработанное на Django и Django REST Framework.
+**LMS System** — backend-приложение платформы онлайн-обучения на Django и Django REST Framework.
+Проект предоставляет REST API для пользователей, курсов, уроков, подписок и платежей.
+Для аутентификации используется JWT, для платежей — Stripe Checkout, а фоновые
+и периодические задачи выполняются через Celery и Redis.
 
-Проект предоставляет REST API для работы с пользователями, курсами, уроками, подписками и платежами. Для аутентификации используется JWT, для оплаты курсов — Stripe Checkout, а фоновые и периодические задачи выполняются через Celery и Redis.
+**Цель итогового задания:** контейнеризация всех сервисов, запуск одной командой,
+автоматические тесты и линтинг в GitHub Actions, сборка Docker-образа и SSH-деплой
+на виртуальную машину Yandex Cloud после успешных проверок.
+
+**Быстрый старт:** создать `.env` по `.env.example`, затем выполнить
+`docker compose up --build -d --wait`. Проверка: `http://localhost:8080/health/`.
+Инструкция по серверу: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Основные возможности
 
@@ -157,20 +166,184 @@ Celery Beat периодически проверяет поле `last_login` п
 
 Пользователи с `last_login=None` автоматически не блокируются только на основании этой проверки.
 
-## Технологии
+## Стек технологий
 
-- Python 3;
-- Django 5;
-- Django REST Framework;
-- SimpleJWT;
-- django-filter;
-- drf-spectacular;
-- Celery;
-- Redis;
-- Stripe Python SDK;
-- Pillow;
-- python-dotenv;
-- Coverage;
-- PostgreSQL — база данных в Docker;
-- Docker и Docker Compose;
-- SQLite — база данных для локальной разработки.
+- Python 3.13, Django 5.2, Django REST Framework;
+- PostgreSQL 16, Redis 7;
+- Celery Worker и Celery Beat;
+- Gunicorn, Nginx, Docker, Docker Compose;
+- GitHub Actions, GitHub Container Registry (GHCR), SSH;
+- Simple JWT, django-filter, drf-spectacular (Swagger/OpenAPI), Stripe API;
+- Ruff для линтинга, тесты Django.
+
+Для Docker и CI используется **PostgreSQL**. Если запускать Django отдельно от
+контейнеров и не указывать `DB_HOST`, настройки предусматривают SQLite — это
+не основной режим запуска для данного задания.
+
+## Контейнеризация и запуск одной командой
+
+Все сервисы объявлены в `docker-compose.yml` для локальной разработки и в
+`docker-compose.prod.yml` для сервера.
+
+| Сервис | Назначение | Доступ снаружи |
+| --- | --- | --- |
+| `backend` | Django + Gunicorn, миграции и сбор статики при старте | Нет, порт 8000 только внутри Docker |
+| `db` | PostgreSQL 16, хранение данных | Нет, порт 5432 только внутри Docker |
+| `redis` | Broker и result backend Celery | Нет, порт 6379 только внутри Docker |
+| `celery` | Обработка фоновых задач | Нет |
+| `celery_beat` | Запуск периодических задач | Нет |
+| `nginx` | Reverse proxy, `/static/` и `/media/` | Локально: 8080 (настраивается); сервер: 80 |
+
+Именованные тома `postgres_data`, `redis_data`, `static_data`, `media_data`
+сохраняют БД, данные Redis, статику и загруженные файлы между перезапусками.
+Для нужных сервисов заданы проверки готовности (`healthcheck`), зависимости и
+политика перезапуска `unless-stopped`.
+
+### 1. Локальный запуск (Ubuntu 26.04 LTS / VS Code)
+
+**Требования:** Docker Engine и Docker Compose plugin (`docker compose`).
+Установка: [официальная инструкция Docker для Ubuntu](https://docs.docker.com/engine/install/ubuntu/).
+Команды ниже выполняются **в корне репозитория** в терминале VS Code.
+
+Проверьте наличие Docker:
+
+```bash
+docker --version
+docker compose version
+```
+
+Подготовьте конфигурацию окружения (только при первом запуске):
+
+```bash
+cp .env.example .env
+```
+
+В файле `.env` обязательно замените `SECRET_KEY` и пароли с префиксом `CHANGE_ME`.
+`POSTGRES_PASSWORD` и `DB_PASSWORD` должны совпадать, как и
+`POSTGRES_DB` / `DB_NAME` и `POSTGRES_USER` / `DB_USER`.
+Шаблон уже содержит локальные адреса PostgreSQL (`DB_HOST=db`) и Redis
+(`redis://redis:6379/0`), а также `APP_PORT=8080`.
+Для генерации секретных значений можно использовать:
+
+```bash
+python3 -c 'import secrets; print(secrets.token_urlsafe(48))'  # SECRET_KEY
+python3 -c 'import secrets; print(secrets.token_hex(24))'       # пароль БД
+```
+
+**Одна команда для сборки и запуска всех шести сервисов:**
+
+```bash
+docker compose up --build -d --wait
+```
+
+Приложение выполняет миграции и `collectstatic` при старте `backend`.
+После запуска проверьте:
+
+```bash
+docker compose ps
+curl --fail http://localhost:8080/health/
+```
+
+`/health/` должен вернуть HTTP 200 и JSON `{"status": "ok"}`.
+Доступные адреса:
+
+- <http://localhost:8080/api/docs/> — Swagger UI;
+- <http://localhost:8080/api/schema/> — OpenAPI;
+- <http://localhost:8080/admin/> — админ-панель Django;
+- <http://localhost:8080/health/> — проверка состояния приложения и БД.
+
+Корневой `/` может возвращать HTTP 404 — это нормально для данного API.
+Если изменили `APP_PORT`, обновите и `CSRF_TRUSTED_ORIGINS` в `.env`.
+
+### 2. Тесты, линтинг и диагностика локально
+
+```bash
+# Системная проверка Django и тесты с PostgreSQL в контейнере
+docker compose exec -T backend python manage.py check
+docker compose exec -T backend python manage.py test
+
+# Журнал сервисов
+docker compose logs --tail=100 backend nginx celery celery_beat
+
+# При необходимости — суперпользователь
+docker compose exec backend python manage.py createsuperuser
+```
+
+Для запуска Ruff локально используйте отдельное виртуальное окружение
+(если `python3 -m venv` недоступен, установите пакет `python3-venv`):
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install 'ruff==0.16.10'
+.venv/bin/ruff check .
+```
+
+В CI Ruff запускается автоматически; локальная установка необязательна
+для старта приложения.
+
+Остановка без удаления данных:
+
+```bash
+docker compose down
+```
+
+`docker compose down -v` **удаляет тома и их данные**, включая локальную БД.
+Не используйте эту команду, если данные необходимо сохранить.
+
+## CI/CD на GitHub Actions
+
+Workflow расположен в `.github/workflows/ci-cd.yml`. Он запускается на
+`push` и `pull_request`; зависимости заданий обеспечивают последовательность:
+
+1. **Tests:** Python 3.13, PostgreSQL 16, `python manage.py check`, тесты Django.
+2. **Lint:** `ruff check .` с настройками `pyproject.toml`.
+3. **Build:** сборка Docker-образа с Buildx. В PR образ **не публикуется**.
+4. **Deploy:** **только для push в `develop` после успешных проверок** —
+   публикация образа с тегом SHA коммита в GHCR и автоматический SSH-деплой
+   на сервер Ubuntu.
+
+Деплой запускает на сервере `scripts/deploy_remote.sh`, использует
+`docker-compose.prod.yml`, обновляет контейнеры и выполняет проверку
+`http://SERVER_IP/health/`. В проекте нет необходимости коммитить `.env` или
+секреты сервера.
+
+**Важно:** наличие файла workflow само по себе не доказывает успешный CI/CD.
+Перед сдачей нужно убедиться, что задания в разделе GitHub **Actions** завершились
+успешно, и проверить работоспособность приложения после деплоя.
+
+## Автоматический деплой на Yandex Cloud
+
+Для выполнения этого критерия необходима виртуальная машина на Ubuntu
+с Docker Engine и Docker Compose plugin, публичным IP и настроенным SSH-доступом.
+
+Перед первым деплоем нужно:
+
+1. Создать на сервере пользователя `deploy` и каталог `/opt/lms-system`,
+   предоставить пользователю доступ к Docker и SSH по ключу.
+2. Создать **только на сервере** `/opt/lms-system/.env` по `.env.template`;
+   задать уникальный `SECRET_KEY`, согласованные параметры PostgreSQL,
+   `DEBUG=False`, серверные `ALLOWED_HOSTS` и `CSRF_TRUSTED_ORIGINS`.
+3. В сетевых правилах Yandex Cloud разрешить SSH и HTTP (TCP 80).
+   PostgreSQL, Redis и Gunicorn наружу не публиковать.
+4. Если пакет GHCR приватный, однократно выполнить на сервере `docker login ghcr.io`
+   от пользователя деплоя с токеном, которому доступен пакет (`read:packages`).
+5. Добавить в GitHub → **Settings → Secrets and variables → Actions**:
+
+| Тип | Имя | Для чего |
+| --- | --- | --- |
+| Secret | `DEPLOY_HOST` | Публичный IP или DNS сервера |
+| Secret | `DEPLOY_USER` | SSH-пользователь (обычно `deploy`) |
+| Secret | `DEPLOY_SSH_KEY` | Приватный ключ для подключения GitHub Actions |
+| Secret | `DEPLOY_KNOWN_HOSTS` | Проверенная запись SSH host key сервера |
+| Variable (необязательно) | `DEPLOY_SSH_PORT` | SSH-порт; по умолчанию `22` |
+
+SSH-ключи, `.env`, токены и пароли **не должны попадать в Git**.
+Храните только шаблоны `.env.example` и `.env.template`.
+
+Полная инструкция с командами подготовки сервера, сверкой SSH host key,
+первым запуском, диагностикой и откатом находится в
+**[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+
+Для учебного деплоя настроен HTTP. Перед эксплуатацией с реальными
+пользователями и платежами необходимо настроить HTTPS и соответствующие
+параметры безопасности Django.
