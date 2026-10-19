@@ -17,6 +17,25 @@ jobs:
       ALLOWED_HOSTS: localhost,127.0.0.1,testserver
       CELERY_BROKER_URL: memory://
       CELERY_RESULT_BACKEND: cache+memory://
+      DB_HOST: 127.0.0.1
+      DB_PORT: "5432"
+      DB_NAME: lms_ci
+      DB_USER: lms_ci
+      DB_PASSWORD: ci_only_not_a_production_password
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: lms_ci
+          POSTGRES_USER: lms_ci
+          POSTGRES_PASSWORD: ci_only_not_a_production_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lms_ci -d lms_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v7
