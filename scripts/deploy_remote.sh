@@ -13,8 +13,7 @@ compose=(docker compose --env-file .env --env-file .image.env -f docker-compose.
 
 "${compose[@]}" pull
 "${compose[@]}" up -d --wait db redis
-"${compose[@]}" run --rm backend python manage.py migrate --noinput
-"${compose[@]}" run --rm backend python manage.py collectstatic --noinput
+# Backend runs migrations and collectstatic before Gunicorn becomes healthy.
 # Recreate Nginx after the backend so its upstream uses the current container IP.
 "${compose[@]}" up -d --remove-orphans --wait backend celery celery_beat
 "${compose[@]}" up -d --force-recreate --no-deps --wait nginx
