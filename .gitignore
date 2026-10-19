@@ -33,3 +33,5 @@ celerybeat-schedule*
 
 # Local homework patch
 35.2-ci-cd.patch
+
+coverage.txt
