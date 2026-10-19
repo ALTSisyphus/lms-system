@@ -1,4 +1,4 @@
-# 35.2 — CI/CD и GitHub Actions: развертывание LMS
+# Курс 8. Итоговое задание — Docker, GitHub Actions, CI/CD и автоматический деплой LMS
 
 ## Архитектура
 
@@ -7,9 +7,11 @@
 - PostgreSQL 16 и Redis 7: внутренние контейнеры, порты **5432/6379 не опубликованы**.
 - Celery worker и Celery Beat: отдельные автоматически перезапускаемые контейнеры.
 - Постоянные тома: `postgres_data`, `redis_data`, `static_data`, `media_data`.
-- CI: каждый push и PR → Django tests → Ruff → Docker build. **Только push в `develop`** после успеха всех проверок → GHCR → SSH-деплой. В PR секреты не используются, деплоя нет.
+- CI: каждый push и PR → Django tests на PostgreSQL 16 → Ruff → Docker build. **Только push в `develop`** после успеха всех проверок → GHCR → SSH-деплой. В PR секреты не используются, деплоя нет.
 
-> ВАЖНО. Готовая конфигурация Nginx обслуживает HTTP для проверки задания по IP. До использования личных данных, JWT и платежей подключите **HTTPS** (TLS-терминация на балансировщике или отдельно настроенном Nginx), откройте 443 и включите HTTPS-ориентированные настройки Django. Не используйте HTTP для реальных пользователей.
+Для локального запуска всех шести сервисов, включая Nginx, используйте
+`docker compose up --build -d --wait`. Приложение доступно на
+`http://localhost:8080/api/docs/`; подробности см. в [README](../README.md).
 
 ## 1. Подготовьте Ubuntu 26.04 LTS сервер
 
@@ -49,7 +51,6 @@ sudo ufw enable
 sudo ufw status verbose
 ```
 
-Если VPS-провайдер имеет дополнительный firewall/security group, там также разрешите TCP 22 (или ваш SSH-порт) и 80, закройте 5432, 6379, 8000. На продакшене в Docker эти три порта не публикуются.
 
 ## 2. Создайте отдельный SSH-ключ для GitHub Actions
 
@@ -100,7 +101,7 @@ cp .env.template .env     # если шаблон предварительно �
 chmod 600 .env
 ```
 
-Заполните все `CHANGE_ME`. Для секретного ключа Django сгенерируйте случайную строку, например **в локальном проекте с установленными Django-зависимостями**:
+Заполните все `CHANGE_ME` и замените локальные `localhost:8080` URL на адрес сервера. Для секретного ключа Django сгенерируйте случайную строку, например **в локальном проекте с установленными Django-зависимостями**:
 
 ```bash
 python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
@@ -172,22 +173,10 @@ docker compose --env-file .env --env-file .image.env -f docker-compose.prod.yml 
 ```bash
 docker compose --env-file .env --env-file .image.env -f docker-compose.prod.yml pull
 docker compose --env-file .env --env-file .image.env -f docker-compose.prod.yml up -d --wait
+docker compose --env-file .env --env-file .image.env -f docker-compose.prod.yml up -d --force-recreate --no-deps --wait nginx
 ```
 
 - Откат контейнера **не откатывает миграции БД**. Перед несовместимыми миграциями сделайте резервную копию PostgreSQL и проверьте совместимость схемы.
+- Backend выполняет `migrate` и `collectstatic` перед Gunicorn также при прямом запуске production Compose. Celery ждёт готовности backend. После замены backend пересоздавайте Nginx, чтобы обновить IP upstream (скрипт деплоя делает это автоматически).
 - Повторное развёртывание того же SHA идемпотентно. База и пользовательские загрузки переживают замену образа благодаря volumes. Делайте резервные копии томов.
 - На сервере должны быть доступны ресурсы для 6 контейнеров: backend, nginx, postgres, redis, celery, celery_beat.
-
-## 8. Проверка критериев перед сдачей
-
-- [ ] Python/Django tests проходят (`python manage.py test`), Ruff возвращает код 0.
-- [ ] Push в рабочую ветку и PR запускают тесты → линт → сборку, но **не деплой**.
-- [ ] После merge/push в `develop` выполняется публикация GHCR и деплой.
-- [ ] По IP открывается `/api/docs/`, `/health/` даёт 200.
-- [ ] После аварийного завершения процесса Gunicorn контейнер перезапускается; ручной `docker stop` отключает автоматический перезапуск до следующего запуска.
-- [ ] `docker compose ps` показывает рабочие backend, nginx, postgres, redis, celery, celery_beat.
-- [ ] UFW/security group не публикуют 5432/6379/8000; нет доступных секретов в Git.
-- [ ] `.env.template`, `.gitignore`, GitHub Secrets, SSH и инструкция проверены.
-- [ ] PR содержит описание изменений, ссылку на доступный IP/домен и ссылку на зелёный workflow.
-
-Никакой скрипт в репозитории не может создать VPS, выдать DNS, приватный SSH-ключ или секреты сам по себе: эти пункты должен заполнить владелец сервера.
