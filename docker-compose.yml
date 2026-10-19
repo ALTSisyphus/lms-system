@@ -1,21 +1,57 @@
+# Local full-stack startup: docker compose up --build -d --wait
+# Open http://localhost:8080/api/docs/ (APP_PORT can override 8080).
 services:
   backend:
     build: .
-    env_file:
-      - .env
-    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
-    ports:
-      - "8000:8000"
+    env_file: .env
+    command: >-
+      sh -c "python manage.py migrate --noinput
+      && python manage.py collectstatic --noinput
+      && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000
+      --workers 2 --timeout 60 --access-logfile - --error-logfile -"
+    restart: unless-stopped
+    expose:
+      - "8000"
+    volumes:
+      - static_data:/app/staticfiles
+      - media_data:/app/media
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/', timeout=5).read()"]
+      interval: 15s
+      timeout: 7s
+      retries: 5
+      start_period: 40s
+
+  nginx:
+    image: nginx:1.28-alpine
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_data:/var/www/static:ro
+      - media_data:/var/www/media:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -T 5 -O /dev/null http://127.0.0.1/health/"]
+      interval: 20s
+      timeout: 7s
+      retries: 3
 
   db:
     image: postgres:16-alpine
-    env_file:
-      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    restart: unless-stopped
     expose:
       - "5432"
     volumes:
@@ -29,7 +65,8 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly yes
+    command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
     expose:
       - "6379"
     volumes:
@@ -42,22 +79,22 @@ services:
 
   celery:
     build: .
-    env_file:
-      - .env
-    command: celery -A config worker -l info
+    env_file: .env
+    command: ["celery", "-A", "config", "worker", "--loglevel=info"]
+    restart: unless-stopped
     depends_on:
-      db:
+      backend:
         condition: service_healthy
       redis:
         condition: service_healthy
 
   celery_beat:
     build: .
-    env_file:
-      - .env
-    command: celery -A config beat -l info
+    env_file: .env
+    command: ["celery", "-A", "config", "beat", "--loglevel=info"]
+    restart: unless-stopped
     depends_on:
-      db:
+      backend:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -65,3 +102,5 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  static_data:
+  media_data:
